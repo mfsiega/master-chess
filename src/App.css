@@ -36,3 +36,20 @@
     transform: rotate(360deg);
   }
 }
+
+.full-height {
+  height: 100%;
+}
+
+.row {
+  display: grid;
+  grid-auto-flow: column;
+  text-align: left;
+}
+
+.feedback-row {
+  border-style: solid;
+  border-width: 1px;
+  border-color: lightgray;
+  height: 33.33%;
+}
