@@ -42,7 +42,7 @@ export class EngineEval {
       const score = this.maybeGetCpScore(event);
       const depth = this.maybeGetEvalDepth(event);
       if (score && depth) {
-        this.currentEval = {score, depth};
+        this.currentEval = { score, depth };
         this.onEvalCallback({
           score: score,
           depth: depth,

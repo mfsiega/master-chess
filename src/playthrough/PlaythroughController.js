@@ -4,8 +4,8 @@ import Container from "react-bootstrap/Container";
 import Row from "react-bootstrap/Row";
 import Col from "react-bootstrap/Col";
 
-import Chessground from 'react-chessground'
-import 'react-chessground/dist/styles/chessground.css'
+import Chessground from "react-chessground";
+import "react-chessground/dist/styles/chessground.css";
 
 import { GameController, MoveOutcome } from "./GameController";
 import { Feedback } from "./Feedback";
@@ -42,9 +42,6 @@ export class PlaythroughState {
 export class PlaythroughController extends Component {
   constructor(props) {
     super(props);
-    //this.board = props.board;
-    //this.feedback = props.feedback;
-    //this.movelist = props.movelist;
     this.playthroughState = props.playthroughState;
     this.pgn = props.pgn;
     this.gameController = new GameController(props.pgn);
@@ -52,14 +49,16 @@ export class PlaythroughController extends Component {
       movelist: [],
       fen: "start",
       handlingWrongMove: false,
-      moveScores: []
+      moveScores: [],
     };
   }
 
   onMove(from, to) {
-    const move = {from, to};
+    const move = { from, to };
     if (this.playthroughState !== PlaythroughState.WAITING_FOR_MOVE) {
-      throw new Error(`expected state WAITING_FOR_MOVE, actually ${this.playthroughState.toString()}`);
+      throw new Error(
+        `expected state WAITING_FOR_MOVE, actually ${this.playthroughState.toString()}`
+      );
     }
     const result = this.gameController.tryMove(move);
     const moveScores = [...this.state.moveScores];
@@ -92,15 +91,17 @@ export class PlaythroughController extends Component {
     this.setState({
       movelist: [...this.gameController.getMoveList()],
       fen: this.gameController.getFen(),
-      lastMove: result === MoveOutcome.CORRECT_MOVE ? [from, to] : this.state.lastMove,
+      lastMove:
+        result === MoveOutcome.CORRECT_MOVE ? [from, to] : this.state.lastMove,
       lastPlayerMove: this.gameController.getAlgebraicLastMove(),
-      handlingWrongMove: result === MoveOutcome.WRONG_MOVE
-        ? {
-          youPlayed: this.gameController.getAlgebraicLastMove(),
-          referencePlayed: this.gameController.getReferenceMove()
-        }
-        : undefined,
-      moveScores
+      handlingWrongMove:
+        result === MoveOutcome.WRONG_MOVE
+          ? {
+              youPlayed: this.gameController.getAlgebraicLastMove(),
+              referencePlayed: this.gameController.getReferenceMove(),
+            }
+          : undefined,
+      moveScores,
     });
   }
 
@@ -110,14 +111,14 @@ export class PlaythroughController extends Component {
     }
     const result = this.gameController.tryMove(nextMove);
     if (result !== MoveOutcome.CORRECT_MOVE) {
-      throw new Error('invalid autoplay');
+      throw new Error("invalid autoplay");
     }
     this.autoplayCallback = undefined;
     this.playthroughState = PlaythroughState.WAITING_FOR_MOVE;
     this.setState({
       movelist: [...this.gameController.getMoveList()],
       fen: this.gameController.getFen(),
-      lastMove: this.gameController.getLastMove()
+      lastMove: this.gameController.getLastMove(),
     });
   }
 
@@ -131,7 +132,7 @@ export class PlaythroughController extends Component {
       movelist: [...this.gameController.getMoveList()],
       fen: this.gameController.getFen(),
       lastMove: this.gameController.getLastMove(),
-      handlingWrongMove: undefined
+      handlingWrongMove: undefined,
     });
     this.playthroughState = PlaythroughState.WAITING_FOR_AUTOPLAY;
     const referenceMove = this.gameController.nextMove();
@@ -147,41 +148,61 @@ export class PlaythroughController extends Component {
 
   onWrongMoveEvaluation(evaluation) {
     const score = (() => {
-      const evalDiff = evaluation.playthroughEval.score - evaluation.referenceEval.score;
+      const evalDiff =
+        evaluation.playthroughEval.score - evaluation.referenceEval.score;
       if (evalDiff > 2.0) {
-        return 'DOUBLE_EXCLAM';
+        return "DOUBLE_EXCLAM";
       }
       if (evalDiff > 0.5) {
-        return 'EXCLAM';
+        return "EXCLAM";
       }
       if (evalDiff > -0.25) {
-        return 'INTERESTING';
+        return "INTERESTING";
       }
       if (evalDiff > -1.0) {
-        return 'INACCURACY';
+        return "INACCURACY";
       }
-      return 'MISTAKE';
+      return "MISTAKE";
     })();
     const moveScores = [...this.state.moveScores];
     moveScores.push(score);
-    this.setState({moveScores});
+    this.setState({ moveScores });
+  }
+
+  componentDidMount() {
+    const height = this.divElement.clientHeight;
+    this.setState({ containerHeight: height });
   }
 
   render() {
     return (
-      <div className="PlaythroughController">
+      <div
+        className="PlaythroughController"
+        ref={(divElement) => {
+          this.divElement = divElement;
+        }}
+        height="100%"
+        style={{
+          padding: "16px",
+        }}
+      >
         <Container>
           <Row>
             <Col>
               <Feedback
                 fen={this.state.fen}
                 referenceFen={this.gameController.getReferenceFen()}
-                gameOver={this.state.fen === this.gameController.getReferenceFen()}
+                gameOver={
+                  this.state.fen === this.gameController.getReferenceFen()
+                }
                 handlingWrongMove={this.state.handlingWrongMove}
                 lastPlayerMove={this.state.lastPlayerMove}
                 tryAgainCallback={this.onTryAgain.bind(this)}
                 continueCallback={this.onContinue.bind(this)}
-                wrongMoveEvaluationCallback={this.onWrongMoveEvaluation.bind(this)}
+                wrongMoveEvaluationCallback={this.onWrongMoveEvaluation.bind(
+                  this
+                )}
+                containerHeight={this.state.containerHeight}
               />
             </Col>
             <Col>
@@ -197,13 +218,16 @@ export class PlaythroughController extends Component {
                   centerPiece: true,
                   showGhost: true,
                 }}
+                addDimensionsCssVars={true}
               />
             </Col>
             <Col>
               <div>
                 <MoveList
                   movelist={this.state.movelist}
-                  moveScores={this.state.moveScores}/>
+                  moveScores={this.state.moveScores}
+                  containerHeight={this.state.containerHeight}
+                />
               </div>
             </Col>
           </Row>

@@ -7,7 +7,6 @@ export class MoveOutcome {
 }
 
 export class GameController {
-
   _isPrefix(game, reference) {
     for (const i in game) {
       if (reference[i] !== game[i]) {
@@ -71,7 +70,9 @@ export class GameController {
   }
 
   getLastMove() {
-    const verboseLastMove = this.game.history({verbose: true})[this.game.history().length - 1];
+    const verboseLastMove = this.game.history({ verbose: true })[
+      this.game.history().length - 1
+    ];
     return [verboseLastMove.from, verboseLastMove.to];
   }
 
@@ -109,11 +110,15 @@ export class GameController {
 
   getLegalMoves() {
     const legalMoves = new Map();
-    for (const file of 'abcdefgh') {
-      for (const rank of '12345678') {
+    for (const file of "abcdefgh") {
+      for (const rank of "12345678") {
         const src = file + rank;
-        const dests = this.game.moves({square: src, verbose: true});
-        if (dests.length) legalMoves.set(src, dests.map(m => m.to))
+        const dests = this.game.moves({ square: src, verbose: true });
+        if (dests.length)
+          legalMoves.set(
+            src,
+            dests.map((m) => m.to)
+          );
       }
     }
     return legalMoves;

@@ -8,7 +8,7 @@ export class EngineEvalComponent extends Component {
     this.engineEval = new EngineEval({
       onEvalCallback: this.evalCallback.bind(this),
       fen: this.props.fen,
-      onEvalDone: this.props.onEvalDone
+      onEvalDone: this.props.onEvalDone,
     });
     this.state = {
       eval: 0.0,
