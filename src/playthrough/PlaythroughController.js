@@ -50,6 +50,7 @@ export class PlaythroughController extends Component {
       fen: "start",
       handlingWrongMove: false,
       moveScores: [],
+      cpls: [],
     };
   }
 
@@ -62,6 +63,7 @@ export class PlaythroughController extends Component {
     }
     const result = this.gameController.tryMove(move);
     const moveScores = [...this.state.moveScores];
+    const cpls = [...this.state.cpls];
     switch (result) {
       case MoveOutcome.ILLEGAL_MOVE: {
         this.gameController.undoLastMove();
@@ -81,10 +83,11 @@ export class PlaythroughController extends Component {
         if (nextMove) {
           this.autoplayCallback = setTimeout(() => {
             this.onAutoplay(nextMove);
-          }, 1500);
+          }, 500);
           this.playthroughState = PlaythroughState.WAITING_FOR_AUTOPLAY;
         }
         moveScores.push("CORRECT");
+        cpls.push(0);
         break;
       }
     }
@@ -102,6 +105,7 @@ export class PlaythroughController extends Component {
             }
           : undefined,
       moveScores,
+      cpls,
     });
   }
 
@@ -147,9 +151,9 @@ export class PlaythroughController extends Component {
   }
 
   onWrongMoveEvaluation(evaluation) {
+    const evalDiff =
+      evaluation.playthroughEval.score - evaluation.referenceEval.score;
     const score = (() => {
-      const evalDiff =
-        evaluation.playthroughEval.score - evaluation.referenceEval.score;
       if (evalDiff > 2.0) {
         return "DOUBLE_EXCLAM";
       }
@@ -165,8 +169,10 @@ export class PlaythroughController extends Component {
       return "MISTAKE";
     })();
     const moveScores = [...this.state.moveScores];
+    const cpls = [...this.state.cpls];
     moveScores.push(score);
-    this.setState({ moveScores });
+    cpls.push(evalDiff * 100);
+    this.setState({ moveScores, cpls });
   }
 
   componentDidMount() {
@@ -203,6 +209,7 @@ export class PlaythroughController extends Component {
                   this
                 )}
                 containerHeight={this.state.containerHeight}
+                cpls={this.state.cpls}
               />
             </Col>
             <Col>

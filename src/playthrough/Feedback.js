@@ -4,6 +4,11 @@ import { Button } from "react-bootstrap";
 import { EngineEval } from "../engine/EngineEval";
 import { EngineEvalComponent } from "../engine/EngineEvalComponent";
 
+function getAcpl(cpls) {
+  const sum = cpls.reduce((partial, a) => partial + a, 0);
+  return sum / cpls.length;
+}
+
 export class Feedback extends Component {
   constructor(props) {
     super(props);
@@ -118,6 +123,12 @@ export class Feedback extends Component {
               Continue
             </Button>
           </div>
+        </div>
+        <div
+          className="feedback-row"
+          style={{ display: this.props.gameOver ? "block" : "none" }}
+        >
+          Done! ACPL: {getAcpl(this.props.cpls).toFixed(1)}
         </div>
       </div>
     );
