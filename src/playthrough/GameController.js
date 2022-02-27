@@ -1,4 +1,5 @@
 import Chess from "chess.js";
+import { EngineEval } from "../engine/EngineEval";
 
 export class MoveOutcome {
   static CORRECT_MOVE = new MoveOutcome("CORRECT_MOVE");
@@ -7,6 +8,26 @@ export class MoveOutcome {
 }
 
 export class GameController {
+  constructor(props) {
+    console.log(props);
+    this.reference = new Chess();
+    try {
+      this.reference.load_pgn(props.referencePgn);
+    } catch (e) {
+      console.log(props.referencePgn);
+      throw e;
+    }
+    this.game = new Chess();
+    this.playthroughEval = new EngineEval({
+      onEvalCallback: props.onPlaythroughEval,
+      onEvalDone: props.onPlaythroughEvalDone,
+    });
+    this.referenceEval = new EngineEval({
+      onEvalCallback: props.onReferenceEval,
+      onEvalDone: props.onReferenceEvalDone,
+    });
+  }
+
   _isPrefix(game, reference) {
     for (const i in game) {
       if (reference[i] !== game[i]) {
@@ -14,16 +35,6 @@ export class GameController {
       }
     }
     return true;
-  }
-
-  constructor(referencePgn) {
-    this.reference = new Chess();
-    try {
-      this.reference.load_pgn(referencePgn);
-    } catch (e) {
-      console.log(this.referencePgn);
-    }
-    this.game = new Chess();
   }
 
   // Try to play the move in the ongoing game; return the outcome.
@@ -70,6 +81,9 @@ export class GameController {
   }
 
   getLastMove() {
+    if (this.game.history().length === 0) {
+      return undefined;
+    }
     const verboseLastMove = this.game.history({ verbose: true })[
       this.game.history().length - 1
     ];
@@ -91,14 +105,21 @@ export class GameController {
   }
 
   getReferenceFen() {
-    // Make the next move.
-    const nextMove = this.nextMove();
-    if (this.game.move(nextMove)) {
-      const fen = this.game.fen();
-      this.game.undo();
-      return fen;
+    if (this.game.history().length === 0) {
+      return "start";
     }
-    return this.game.fen();
+    const referenceMove = this.getReferenceMove();
+    const lastMove = this.getAlgebraicLastMove();
+    this.game.undo();
+    if (!this.game.move(referenceMove)) {
+      throw new Error("something went wrong");
+    }
+    const fen = this.game.fen();
+    this.game.undo();
+    if (!this.game.move(lastMove)) {
+      throw new Error("something went wrong");
+    }
+    return fen;
   }
 
   nextMove() {
@@ -122,5 +143,21 @@ export class GameController {
       }
     }
     return legalMoves;
+  }
+
+  gameIsOver() {
+    return this.game.history().length === this.reference.history().length;
+  }
+
+  getHeaders() {
+    return this.reference.header();
+  }
+
+  evaluatePosition() {
+    this.playthroughEval.evaluatePosition(this.game.fen());
+  }
+
+  evaluateReferencePosition() {
+    this.referenceEval.evaluatePosition(this.getReferenceFen());
   }
 }

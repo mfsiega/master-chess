@@ -10,6 +10,8 @@ import "react-chessground/dist/styles/chessground.css";
 import { GameController, MoveOutcome } from "./GameController";
 import { Feedback } from "./Feedback";
 import { MoveList } from "./MoveList";
+import { GameInfo } from "./GameInfo";
+import { EngineEval } from "../engine/EngineEval";
 
 export class EventType {
   static MOVE_PLAYED = new EventType("MOVE_PLAYED");
@@ -26,9 +28,13 @@ export class EventType {
 }
 
 export class PlaythroughState {
+  static WAITING_FOR_PGN = new PlaythroughState("WAITING_FOR_PGN");
   static WAITING_FOR_MOVE = new PlaythroughState("WAITING_FOR_MOVE");
   static WAITING_FOR_AUTOPLAY = new PlaythroughState("WAITING_FOR_AUTOPLAY");
   static EVALUATING_WRONG_MOVE = new PlaythroughState("EVALUATING_WRONG_MOVE");
+  static DONE_EVALUATING_MOVE = new PlaythroughState(
+    "DONE_EVALUATING_WRONG_MOVE"
+  );
 
   constructor(name) {
     this.name = name;
@@ -42,20 +48,30 @@ export class PlaythroughState {
 export class PlaythroughController extends Component {
   constructor(props) {
     super(props);
+    this.props = props;
     this.playthroughState = props.playthroughState;
     this.pgn = props.pgn;
-    this.gameController = new GameController(props.pgn);
+    if (this.pgn) {
+      this.gameController = new GameController(props.pgn);
+    }
     this.state = {
       movelist: [],
       fen: "start",
       handlingWrongMove: false,
       moveScores: [],
       cpls: [],
+      justContinued: false
     };
   }
 
   onMove(from, to) {
     const move = { from, to };
+    if (this.playthroughState === PlaythroughState.WAITING_FOR_PGN) {
+      this.setState({
+        fen: "start",
+      });
+      return;
+    }
     if (this.playthroughState !== PlaythroughState.WAITING_FOR_MOVE) {
       throw new Error(
         `expected state WAITING_FOR_MOVE, actually ${this.playthroughState.toString()}`
@@ -91,6 +107,17 @@ export class PlaythroughController extends Component {
         break;
       }
     }
+    if (this.state.analysisEnabled) {
+      this.gameController.evaluatePosition();
+    }
+    if (this.playthroughState === PlaythroughState.EVALUATING_WRONG_MOVE) {
+      this.gameController.evaluatePosition();
+      this.gameController.evaluateReferencePosition();
+      if (this.state.playthroughEvalDone && this.state.referenceEvalDone) {
+        this.updateWrongMoveScore();
+        this.playthroughState = PlaythroughState.DONE_EVALUATING_MOVE;
+      }
+    }
     this.setState({
       movelist: [...this.gameController.getMoveList()],
       fen: this.gameController.getFen(),
@@ -106,6 +133,13 @@ export class PlaythroughController extends Component {
           : undefined,
       moveScores,
       cpls,
+      playthroughEvalScore: undefined,
+      playthroughEvalDepth: undefined,
+      playthroughEvalDone: false,
+      referenceEvalScore: undefined,
+      referenceEvalDepth: undefined,
+      referenceEvalDone: false,
+      justContinued: false
     });
   }
 
@@ -115,6 +149,7 @@ export class PlaythroughController extends Component {
     }
     const result = this.gameController.tryMove(nextMove);
     if (result !== MoveOutcome.CORRECT_MOVE) {
+      console.log(nextMove);
       throw new Error("invalid autoplay");
     }
     this.autoplayCallback = undefined;
@@ -123,6 +158,7 @@ export class PlaythroughController extends Component {
       movelist: [...this.gameController.getMoveList()],
       fen: this.gameController.getFen(),
       lastMove: this.gameController.getLastMove(),
+      playthroughEvalDone: false,
     });
   }
 
@@ -130,13 +166,25 @@ export class PlaythroughController extends Component {
     throw new Error("unimplemented");
   }
 
+  // TODO: playthrough states.
   onContinue() {
-    this.gameController.undoLastMove();
+    console.log('on continue');
+    let undidLastMove = false;
+    const moveScores = [...this.state.moveScores];
+    if (this.playthroughState === PlaythroughState.EVALUATING_WRONG_MOVE || this.playthroughState === PlaythroughState.DONE_EVALUATING_MOVE) {
+      this.gameController.undoLastMove();
+      undidLastMove = true;
+      console.log('undid last move');
+    }
+    else {
+      this.state.moveScores.push("PASS");
+    }
     this.setState({
       movelist: [...this.gameController.getMoveList()],
       fen: this.gameController.getFen(),
-      lastMove: this.gameController.getLastMove(),
+      lastMove: this.gameController.getLastMove() || '',
       handlingWrongMove: undefined,
+      justContinued: true
     });
     this.playthroughState = PlaythroughState.WAITING_FOR_AUTOPLAY;
     const referenceMove = this.gameController.nextMove();
@@ -147,12 +195,12 @@ export class PlaythroughController extends Component {
       this.autoplayCallback = setTimeout(() => {
         this.onAutoplay(nextMove);
       }, 500);
-    }, 500);
+    }, undidLastMove ? 500 : 10);
   }
 
-  onWrongMoveEvaluation(evaluation) {
+  updateWrongMoveScore() {
     const evalDiff =
-      evaluation.playthroughEval.score - evaluation.referenceEval.score;
+      this.state.playthroughEvalScore - this.state.referenceEvalScore;
     const score = (() => {
       if (evalDiff > 2.0) {
         return "DOUBLE_EXCLAM";
@@ -175,12 +223,85 @@ export class PlaythroughController extends Component {
     this.setState({ moveScores, cpls });
   }
 
+  onToggleEngineAnalysis(checked) {
+    this.setState({ analysisEnabled: checked });
+    this.gameController.evaluatePosition();
+  }
+
+  onPlaythroughEval(engineEval) {
+    console.log(`playthroughEval: ${JSON.stringify(engineEval)}`);
+    if (!this.state.playthroughEvalDone) {
+      this.setState({
+        playthroughEvalScore: engineEval.score,
+        playthroughEvalDepth: engineEval.depth,
+        playthroughEvalDone: false,
+      });
+    }
+  }
+
+  onPlaythroughEvalDone(engineEval) {
+    console.log(`playthroughEvalDone: ${JSON.stringify(engineEval)}`);
+    this.setState({
+      playthroughEvalScore: engineEval.score,
+      playthroughEvalDepth: engineEval.depth,
+      playthroughEvalDone: true,
+    });
+
+    if (
+      this.state.playthroughEvalDone &&
+      this.state.referenceEvalDone &&
+      this.playthroughState === PlaythroughState.EVALUATING_WRONG_MOVE
+    ) {
+      this.updateWrongMoveScore();
+      this.playthroughState = PlaythroughState.DONE_EVALUATING_MOVE;
+    }
+  }
+
+  onReferenceEval(engineEval) {
+    console.log(`referenceEval: ${JSON.stringify(engineEval)}`);
+    if (!this.state.referenceEvalDone) {
+      this.setState({
+        referenceEvalScore: engineEval.score,
+        referenceEvalDepth: engineEval.depth,
+        referenceEvalDone: false,
+      });
+    }
+  }
+
+  onReferenceEvalDone(engineEval) {
+    console.log(`referenceEvalDone: ${JSON.stringify(engineEval)}`);
+    this.setState({
+      referenceEvalScore: engineEval.score,
+      referenceEvalDepth: engineEval.depth,
+      referenceEvalDone: true,
+    });
+
+    if (
+      this.state.playthroughEvalDone &&
+      this.state.referenceEvalDone &&
+      this.playthroughState === PlaythroughState.EVALUATING_WRONG_MOVE
+    ) {
+      this.updateWrongMoveScore();
+      this.playthroughState = PlaythroughState.DONE_EVALUATING_MOVE;
+    }
+  }
+
   componentDidMount() {
     const height = this.divElement.clientHeight;
     this.setState({ containerHeight: height });
   }
 
   render() {
+    if (this.props.pgn && !this.gameController) {
+      this.gameController = new GameController({
+        referencePgn: this.props.pgn,
+        onPlaythroughEval: this.onPlaythroughEval.bind(this),
+        onPlaythroughEvalDone: this.onPlaythroughEvalDone.bind(this),
+        onReferenceEval: this.onReferenceEval.bind(this),
+        onReferenceEvalDone: this.onReferenceEvalDone.bind(this),
+      });
+      this.playthroughState = PlaythroughState.WAITING_FOR_MOVE;
+    }
     return (
       <div
         className="PlaythroughController"
@@ -195,21 +316,44 @@ export class PlaythroughController extends Component {
         <Container>
           <Row>
             <Col>
+              <GameInfo
+                pgnHeaders={this.gameController?.getHeaders() || undefined}
+                playthroughEval={{
+                  done: this.state.playthroughEvalDone,
+                  score: this.state.playthroughEvalScore,
+                  depth: this.state.playthroughEvalDepth,
+                }}
+                toggleAnalysisCallback={this.onToggleEngineAnalysis.bind(this)}
+                analysisEnabled={this.state.analysisEnabled}
+              />
               <Feedback
                 fen={this.state.fen}
-                referenceFen={this.gameController.getReferenceFen()}
-                gameOver={
-                  this.state.fen === this.gameController.getReferenceFen()
+                referenceFen={
+                  this.gameController
+                    ? this.gameController.getReferenceFen()
+                    : "start"
                 }
+                gameOver={this.gameController?.gameIsOver()}
                 handlingWrongMove={this.state.handlingWrongMove}
                 lastPlayerMove={this.state.lastPlayerMove}
+                justContinued={this.state.justContinued}
                 tryAgainCallback={this.onTryAgain.bind(this)}
                 continueCallback={this.onContinue.bind(this)}
-                wrongMoveEvaluationCallback={this.onWrongMoveEvaluation.bind(
-                  this
-                )}
                 containerHeight={this.state.containerHeight}
                 cpls={this.state.cpls}
+                style={{
+                  padding: "8px",
+                }}
+                playthroughEval={{
+                  done: this.state.playthroughEvalDone,
+                  score: this.state.playthroughEvalScore,
+                  depth: this.state.playthroughEvalDepth,
+                }}
+                referenceEval={{
+                  done: this.state.referenceEvalDone,
+                  score: this.state.referenceEvalScore,
+                  depth: this.state.referenceEvalDepth,
+                }}
               />
             </Col>
             <Col>
@@ -219,7 +363,7 @@ export class PlaythroughController extends Component {
                 lastMove={this.state.lastMove}
                 movable={{
                   free: false,
-                  dests: this.gameController.getLegalMoves(),
+                  dests: this.gameController?.getLegalMoves(),
                 }}
                 draggable={{
                   centerPiece: true,

@@ -5,6 +5,8 @@ import Container from "react-bootstrap/Container";
 import Row from "react-bootstrap/Row";
 import Col from "react-bootstrap/Col";
 
+import Logo from "./logo.svg";
+
 import {
   PlaythroughState,
   PlaythroughController,
@@ -32,21 +34,47 @@ const pgn = [
 class App extends Component {
   constructor(props) {
     super(props);
+    this.state = {
+      pgn: undefined,
+    };
+  }
+
+  async componentDidMount() {
+    if (this.state.pgn) {
+      return;
+    }
+    const response = await window.fetch(
+      "http://localhost:8080/api/v1/getRandomGame"
+    );
+    const body = await response.json();
+    this.setState({
+      pgn: body.pgn,
+    });
   }
 
   render() {
     return (
       <div className="App">
         <PlaythroughController
-          playthroughState={PlaythroughState.WAITING_FOR_MOVE}
-          pgn={pgn.join("\n")}
+          playthroughState={
+            this.state.pgn
+              ? PlaythroughState.WAITING_FOR_MOVE
+              : PlaythroughState.WAITING_FOR_PGN
+          }
+          pgn={this.state.pgn}
         />
         <div>
           <Container>
             <Row>
-              <Col>Left Footer Placeholder</Col>
-              <Col>Center Footer Placeholder</Col>
-              <Col>Right Footer Placeholder</Col>
+              <Col></Col>
+              <Col>
+                <div style={{
+                  fontFamily: 'monospace'
+                }}>
+                  <img src={Logo}/>
+                </div>
+              </Col>
+              <Col></Col>
             </Row>
           </Container>
         </div>
