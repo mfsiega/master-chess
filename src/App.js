@@ -68,10 +68,12 @@ class App extends Component {
             <Row>
               <Col></Col>
               <Col>
-                <div style={{
-                  fontFamily: 'monospace'
-                }}>
-                  <img src={Logo}/>
+                <div
+                  style={{
+                    fontFamily: "monospace",
+                  }}
+                >
+                  <img src={Logo} />
                 </div>
               </Col>
               <Col></Col>
