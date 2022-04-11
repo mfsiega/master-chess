@@ -72,6 +72,7 @@ export class Feedback extends Component {
             <Button
               className="btn-block mr-1 mt-1 btn-lg h-50"
               variant="primary"
+              disabled={this.props.handlingWrongMove && !this.props.playthroughEval?.done ? true : false}
               onClick={this.continueCallback.bind(this)}
               size="lg"
             >
