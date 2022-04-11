@@ -68,11 +68,12 @@ function getEvalIndicator(score) {
     case "PASS": {
       return (
         <span
-          style={{width: "20px", display: "inline-block"}}
-          className="badge badge-secondary">
-            -
+          style={{ width: "20px", display: "inline-block" }}
+          className="badge badge-secondary"
+        >
+          -
         </span>
-      )
+      );
     }
     default: {
       return <span style={{ width: "20px", display: "inline-block" }}></span>;

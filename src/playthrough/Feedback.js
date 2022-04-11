@@ -26,44 +26,75 @@ export class Feedback extends Component {
           height: "50%",
           paddingTop: "4px",
           paddingBottom: "4px",
-          fontFamily: 'monospace'
+          fontFamily: "monospace",
         }}
       >
         <div
           style={{
             height: "50%",
-            paddingBottom: '2px',
+            paddingBottom: "2px",
             backgroundColor: "lightgrey",
             backgroundClip: "content-box",
           }}
         >
-          <div style={{display: this.props.lastPlayerMove && !this.props.justContinued ? 'block' : 'none'}}>
-            <span style={{paddingLeft: '4px'}}>You played: </span><span style={{float: 'right', paddingRight: '8px'}}>{this.props.lastPlayerMove}</span>
+          <div
+            style={{
+              display:
+                this.props.lastPlayerMove && !this.props.justContinued
+                  ? "block"
+                  : "none",
+            }}
+          >
+            <span style={{ paddingLeft: "4px" }}>You played: </span>
+            <span style={{ float: "right", paddingRight: "8px" }}>
+              {this.props.lastPlayerMove}
+            </span>
             <br />
-            <div style={{display: this.props.handlingWrongMove ? 'block' : 'none', paddingLeft: '4px'}}>
-              They played: <span style={{float: 'right', paddingRight: '8px'}}>{this.props.handlingWrongMove?.referencePlayed || ''}</span>
+            <div
+              style={{
+                display: this.props.handlingWrongMove ? "block" : "none",
+                paddingLeft: "4px",
+              }}
+            >
+              They played:{" "}
+              <span style={{ float: "right", paddingRight: "8px" }}>
+                {this.props.handlingWrongMove?.referencePlayed || ""}
+              </span>
             </div>
-            <div style={{display: (this.props.handlingWrongMove) ? 'none' : 'block', paddingLeft: '4px'}}>Correct!</div>
+            <div
+              style={{
+                display: this.props.handlingWrongMove ? "none" : "block",
+                paddingLeft: "4px",
+              }}
+            >
+              Correct!
+            </div>
             <br />
-            <span style={{paddingLeft: '4px'}}>{this.props.handlingWrongMove
-              ? cpl
-                ? `Eval diff: ${cpl}`
-                : "Evaluation..."
-              : ""}
+            <span style={{ paddingLeft: "4px" }}>
+              {this.props.handlingWrongMove
+                ? cpl
+                  ? `Eval diff: ${cpl}`
+                  : "Evaluation..."
+                : ""}
             </span>
           </div>
-          <div style={{
-            display: this.props.lastPlayerMove && !this.props.justContinued ? 'none' : 'block',
-            textAlign: 'center',
-            verticalAlign: 'middle'
-          }}>
+          <div
+            style={{
+              display:
+                this.props.lastPlayerMove && !this.props.justContinued
+                  ? "none"
+                  : "block",
+              textAlign: "center",
+              verticalAlign: "middle",
+            }}
+          >
             Your move!
           </div>
         </div>
         <div
           style={{
             height: "50%",
-            paddingTop: '2px',
+            paddingTop: "2px",
             backgroundColor: "lightgrey",
             backgroundClip: "content-box",
           }}
@@ -72,7 +103,12 @@ export class Feedback extends Component {
             <Button
               className="btn-block mr-1 mt-1 btn-lg h-50"
               variant="primary"
-              disabled={this.props.handlingWrongMove && !this.props.playthroughEval?.done ? true : false}
+              disabled={
+                this.props.handlingWrongMove &&
+                !this.props.playthroughEval?.done
+                  ? true
+                  : false
+              }
               onClick={this.continueCallback.bind(this)}
               size="lg"
             >
@@ -81,10 +117,15 @@ export class Feedback extends Component {
             <Button
               className="btn-block mr-1 mt-1 btn-lg h-50"
               href={`https://lichess.org/analysis/${this.props.fen}`}
-              target="_blank">
-              <span style={{
-                fontSize: 'x-small'
-              }}>Analyze [Lichess.org] </span>
+              target="_blank"
+            >
+              <span
+                style={{
+                  fontSize: "x-small",
+                }}
+              >
+                Analyze [Lichess.org]{" "}
+              </span>
             </Button>
           </div>
         </div>

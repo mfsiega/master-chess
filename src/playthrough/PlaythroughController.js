@@ -60,7 +60,7 @@ export class PlaythroughController extends Component {
       handlingWrongMove: false,
       moveScores: [],
       cpls: [],
-      justContinued: false
+      justContinued: false,
     };
   }
 
@@ -139,7 +139,7 @@ export class PlaythroughController extends Component {
       referenceEvalScore: undefined,
       referenceEvalDepth: undefined,
       referenceEvalDone: false,
-      justContinued: false
+      justContinued: false,
     });
   }
 
@@ -168,34 +168,39 @@ export class PlaythroughController extends Component {
 
   // TODO: playthrough states.
   onContinue() {
-    console.log('on continue');
+    console.log("on continue");
     let undidLastMove = false;
     const moveScores = [...this.state.moveScores];
-    if (this.playthroughState === PlaythroughState.EVALUATING_WRONG_MOVE || this.playthroughState === PlaythroughState.DONE_EVALUATING_MOVE) {
+    if (
+      this.playthroughState === PlaythroughState.EVALUATING_WRONG_MOVE ||
+      this.playthroughState === PlaythroughState.DONE_EVALUATING_MOVE
+    ) {
       this.gameController.undoLastMove();
       undidLastMove = true;
-      console.log('undid last move');
-    }
-    else {
+      console.log("undid last move");
+    } else {
       this.state.moveScores.push("PASS");
     }
     this.setState({
       movelist: [...this.gameController.getMoveList()],
       fen: this.gameController.getFen(),
-      lastMove: this.gameController.getLastMove() || '',
+      lastMove: this.gameController.getLastMove() || "",
       handlingWrongMove: undefined,
-      justContinued: true
+      justContinued: true,
     });
     this.playthroughState = PlaythroughState.WAITING_FOR_AUTOPLAY;
     const referenceMove = this.gameController.nextMove();
-    this.autoplayCallback = setTimeout(() => {
-      this.onAutoplay(referenceMove);
-      this.playthroughState = PlaythroughState.WAITING_FOR_AUTOPLAY;
-      const nextMove = this.gameController.nextMove();
-      this.autoplayCallback = setTimeout(() => {
-        this.onAutoplay(nextMove);
-      }, 500);
-    }, undidLastMove ? 500 : 10);
+    this.autoplayCallback = setTimeout(
+      () => {
+        this.onAutoplay(referenceMove);
+        this.playthroughState = PlaythroughState.WAITING_FOR_AUTOPLAY;
+        const nextMove = this.gameController.nextMove();
+        this.autoplayCallback = setTimeout(() => {
+          this.onAutoplay(nextMove);
+        }, 500);
+      },
+      undidLastMove ? 500 : 10
+    );
   }
 
   updateWrongMoveScore() {
@@ -226,6 +231,22 @@ export class PlaythroughController extends Component {
   onToggleEngineAnalysis(checked) {
     this.setState({ analysisEnabled: checked });
     this.gameController.evaluatePosition();
+  }
+
+  async onSkipOpening() {
+    let i = 0;
+    while (i < 5) {
+      this.state.moveScores.push("PASS");
+      this.playthroughState = PlaythroughState.WAITING_FOR_AUTOPLAY;
+      const referenceMove = this.gameController.nextMove();
+      this.onAutoplay(referenceMove);
+      await new Promise((r) => setTimeout(r, 250));
+      this.playthroughState = PlaythroughState.WAITING_FOR_AUTOPLAY;
+      const nextMove = this.gameController.nextMove();
+      this.onAutoplay(nextMove);
+      await new Promise((r) => setTimeout(r, 500));
+      i++;
+    }
   }
 
   onPlaythroughEval(engineEval) {
@@ -325,6 +346,11 @@ export class PlaythroughController extends Component {
                 }}
                 toggleAnalysisCallback={this.onToggleEngineAnalysis.bind(this)}
                 analysisEnabled={this.state.analysisEnabled}
+                skipOpeningCallback={
+                  this.gameController?.getMoveList().length === 0
+                    ? this.onSkipOpening.bind(this)
+                    : undefined
+                }
               />
               <Feedback
                 fen={this.state.fen}
